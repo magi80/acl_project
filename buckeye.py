@@ -6,6 +6,7 @@ See the bottom of this file for a simple usage example.
 """
 
 import re
+import os
 
 def read_words(path):
     """Read a .words file from Buckeye.
@@ -51,6 +52,10 @@ def iterate_utterances(words, pause_max):
 
 def read_buckeye(path, pause_max=0.3):
     words = read_words(path)
+    if (m := re.match(r's(\d\d)\d\d[ab].words', os.path.basename(path))):
+        speaker = int(m.group(1))
+    else:
+        raise ValueError(f'Invalid file name format: {path}')
     return {'utterances': [
                 {'t_start': utt[0][0],
                  't_end': utt[-1][1],
@@ -63,7 +68,7 @@ def read_buckeye(path, pause_max=0.3):
                      ]
                  } for utt in iterate_utterances(words, pause_max)
                 ],
-            'speaker': '?'
+            'speaker': speaker
             }
 
 if __name__ == '__main__':
