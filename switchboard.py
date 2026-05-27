@@ -30,16 +30,20 @@ def iterate_utterances(words, pause_max):
     if utt:
         yield utt
 
-def read_switchboard(path_prefix, pause_max=0.3):
+def read_switchboard(path_prefix, pause_max=0.3, dialogue_speaker_id=None):
     utterances = []
     dialogue = os.path.basename(path_prefix)
-    # From corpus-resources/dialogues.xml and
-    # corpus-resources/speakers.xml we can get speaker IDs and metadata
-    # instead of just A or B below. Implement if needed.
+    assert dialogue.startswith('sw')
     for participant in ('A', 'B'):
         path = f'{path_prefix}.{participant}.phonwords.xml'
         words = read_words(path)
         for utt in iterate_utterances(words, pause_max):
+            # No longer supported
+            assert dialogue_speaker_id is not None
+            # if dialogue_speaker_id is None:
+            #     speaker = f'{dialogue}.{participant}'
+            # else:
+            speaker = dialogue_speaker_id[(dialogue[2:], participant)]
             utterances.append({
                 't_start': utt[0][0],
                 't_end': utt[-1][1],
@@ -47,12 +51,46 @@ def read_switchboard(path_prefix, pause_max=0.3):
                            't_start': t0,
                            't_end': t1}
                             for t0, t1, form in utt],
-                'speaker': f'{dialogue}.{participant}' # TODO: speaker ID
+                'speaker': speaker,
                 })
     utterances.sort(key=lambda u: u['t_start'])
-    return {'utterances': utterances}
+    return {'session': dialogue, 'utterances': utterances}
+
+def read_dialogue_speaker(corpus_resources_dir):
+    dialogues = ET.parse(os.path.join(corpus_resources_dir, 'dialogues.xml'))
+    speakers = ET.parse(os.path.join(corpus_resources_dir, 'speakers.xml'))
+    speaker_properties = {}
+    dialogue_speaker_id = {}
+    for speaker in speakers.findall('speaker'):
+        sex = speaker.get('sex')
+        year = speaker.get('dob')
+        dialect = speaker.get('dialect')
+        speaker_id = speaker.get('{http://nite.sourceforge.net/}id')
+        assert speaker_id.startswith('spkr')
+        speaker_properties[speaker_id] = dict(
+                id=speaker_id[4:],
+                sex=sex,
+                year=year,
+                dialect=dialect)
+
+    for dialogue in dialogues.findall('dialogue'):
+        nr = dialogue.get('swbdid')
+        for el in dialogue:
+            href = el.get('href')
+            if (m := re.match(r'speakers\.xml#id\((spkr\d+)\)$', href)):
+                speaker = m.group(1)
+                role = el.get('role')
+                dialogue_speaker_id[(nr, role)] = speaker_properties[speaker]
+
+    return dialogue_speaker_id
 
 if __name__ == '__main__':
     import sys
     import pprint
-    pprint.pp(read_switchboard(sys.argv[1]))
+    filename = sys.argv[1]
+    corpus_path = os.path.dirname(os.path.dirname(filename))
+    dialogue_speaker_id = read_dialogue_speaker(
+            os.path.join(corpus_path, 'corpus-resources'))
+    pprint.pp(dialogue_speaker_id)
+    pprint.pp(read_switchboard(
+        filename, dialogue_speaker_id=dialogue_speaker_id))
