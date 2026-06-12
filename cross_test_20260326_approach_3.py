@@ -9,8 +9,9 @@ import json
 
 class Surprisal:
     def __init__(self, word_level=False, sentence_level=False):
-        self.root = '/Users/matteo/Desktop/ENGKJV/text' # Change local path
-        self.device =  torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+        self.root = './ENGKJV/text' # Change local path
+        self.device = torch.device("mps" if torch.backends.mps.is_available()
+                                   else "cuda")
         self.model = BertForMaskedLM.from_pretrained("bert-base-cased").to(self.device)
         self.tokenizer = AutoTokenizer.from_pretrained('bert-base-cased')
         self.par_data, self.sent_data = self.create_bible_dict()
@@ -675,8 +676,8 @@ class Surprisal:
             print(f'Total Bible Collection of {len(stats_par)} Chapters')      
             for dct in stats_par:
                 chap_id = dct.get('chap_id')
-                print(f'Tokenized Words in chapter ID {chap_id}: {dct.get('paragraph')}')
-                print(f'Total Words in chapter ID {chap_id}: {dct.get('word_length')}')
+                print(f'Tokenized Words in chapter ID {chap_id}: {dct.get("paragraph")}')
+                print(f'Total Words in chapter ID {chap_id}: {dct.get("word_length")}')
             print('====================')
 
         return stats_par
@@ -728,7 +729,7 @@ class Surprisal:
                 print(f'Total Words in chapter ID {chap_id}: {txt_length}')
                 for sent_data in dct['sentences']: 
                     print(f'Chapter ID: {chap_id} | Total Sentences: {sent_data.get("n_sentences")} || Sentence ID: {sent_data.get("sentence_id")} | Words: {sent_data.get("word_count")}')
-                    print(f'Tokenized: {sent_data.get('tokenized_sent')}')     
+                    print(f'Tokenized: {sent_data.get("tokenized_sent")}')     
             print('====================')
         return stats_sent
    
